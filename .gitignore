@@ -29,4 +29,5 @@ temp*
 *.vrb
 *.txt
 
+*.pro.user
 *.pro
