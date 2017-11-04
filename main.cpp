@@ -1,10 +1,12 @@
 #include <iostream>
+#include <cmath>
 using namespace std;
 
-double** create_matrix(int dim, int n);
-void delete_matrix(int dim, int n, double** state);
-double ising_first(double** state, int dim, int n);
-void ising_diff(double** state, double* energy);
+int** create_matrix_2(int n);
+void delete_matrix_2(int n, int** state);
+void print_matrix_to_screen(int n, int** state);
+void initialize(int** state, double temperature, int& E, int& M, int n);
+//void ising_diff(int** state, int* energy);
 
 int main()
 {
@@ -15,11 +17,28 @@ int main()
 	// - En grense for hvor høy sannsynligheten skal være før noe gjennomføres?
 	// - Temperaturintervallet funksjonen skal kjøres over.
 
+    //int dimension = 2;
+    int N = 2;
+    int** spins;
+    //int MC_iterations = pow(10, 4);
+    double final_temp = 4, initial_temp = 1;
+    double temp_step = (final_temp-initial_temp)/pow(10,0);
+    int energy = 0, magnetization = 0;
 
 	// Skal gjøres for mange temperaturer. Må ha en for-løkke for dette ytterst.
 
-	// Lagre verdier i en peke-matrise innenfor temperaturløkka? Og så skrive til til for hver temperatur?
-	// Ha en egen klasse for systemet? Virker som en god ide. Kan lagre energier osv.
+    for(int temperature = initial_temp; temperature < final_temp; temperature += temp_step){
+
+    // Lagre verdier i en peke-matrise innenfor temperaturløkka? Og så skrive til til for hver temperatur?
+
+        spins = create_matrix_2(N);
+
+        print_matrix_to_screen(N, spins);
+        initialize(spins, temperature, energy, magnetization, N);
+        print_matrix_to_screen(N, spins);
+
+        cout << "The energy initial energy is " << energy << ", and the magnetization is " << magnetization << ".\n";
+
 
 	// MONTE CARLO
 	// Må lage en random number generator.
@@ -27,6 +46,7 @@ int main()
 	// Dette beskriver da en spesifikk partikkel som evt. skal endre spin.
 	// Monte Carlo kjøres i en for-løkke ca 10^6 ganger.  
 
+        // int random_spin = 1;
 
 	// ISING
 	// Regner ut energien til hele systemet slik det er nå (dette kan sannsynligvis lagres på), og energien hvis partikkelen funnet
@@ -42,24 +62,32 @@ int main()
 
 	// RESULTATER
 	// Gi ut gjennomsnittsenergi, gjennomsnittsmagnetisering, varmekapasitet og suseptebilitet.
+    }
 
+    delete_matrix_2(N, spins);
 
 	return 0;
 }
 
-double** create_matrix(int dim, int n){
+int** create_matrix_2(int n){
 
-    double **state;
-        state = new double*[dim];
+    int **state;
+    state = new int*[n];
 
-        for(int i=0; i<total_planets; i++){
-            state[i] = new double[n];
+    for(int i=0; i < n; i++){
+        state[i] = new int[n];
+    }
+
+    for(int y=0; y<n; y++){
+        for(int x=0; x<n; x++){
+            state[x][y] = 0;
         }
+    }
 
     return state;
 }
 
-void delete_matrix(int dim, int n, double** state){
+void delete_matrix_2(int n, int** state){
 
     for(int i=0; i<n; i++){
         delete [] state[i];
@@ -67,50 +95,70 @@ void delete_matrix(int dim, int n, double** state){
     delete [] state;
 }
 
-double ising_first(double **state, int dim, int n){ // MÅ TILPASSES ANDRE DIMENSJONER ENN 2
+void print_matrix_to_screen(int n, int **state){
 
-    double J; // Coupling constant
-    double energy = 0.0;
-    double temp = 0.0;
+    cout << "\n";
+    for(int y = 0; y < n; y++){
+        for(int x = 0; x < n; x++){
 
-    for(int x=0; x<n; x++){
+            cout << state[x][y] << "  ";
+        }
+        cout << "\n";
+    }
+}
 
-        for(int y=0; y<n; y++){
+void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses periodic boundary conditions.
+
+    int J = 1; // Coupling constant
+    int temp_energy = 0;
+
+    // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
+    for(int y = 0; y < n; y++){
+        for(int x = 0; x < n; x++){
+            if(temperature<1.5)
+                state[x][y] = 1;
+        }
+    }
+
+    E = M = 0;
+    for(int y=0; y<n; y++){
+        for(int x=0; x<n; x++){
 
             // KANT VENSTRE
             if(x == 0)
-                temp += state[n-1][y];
+                temp_energy += state[n-1][y];
             else
-                temp += state[x-1][y];
+                temp_energy += state[x-1][y];
 
             // KANT OPPE
             if(y == 0)
-                temp += state[x][n-1];
+                temp_energy += state[x][n-1];
             else
-                temp += state[x][y-1];
+                temp_energy += state[x][y-1];
 
             // KANT HØYRE
             if(x == (n-1))
-                temp += state[0][y];
+                temp_energy += state[0][y];
             else
-                temp += state[x+1][y];
+                temp_energy += state[x+1][y];
 
             // KANT NEDE
             if( y == (n-1))
-                temp += state[x][0];
+                temp_energy += state[x][0];
             else
-                temp += state[x][y+1];
+                temp_energy += state[x][y+1];
 
-            energy += state[x][y]*temp;
-            temp = 0.0;
+            E += -J*state[x][y]*temp_energy;
+            temp_energy = 0;
+
+            M += state[x][y];
         }
     }
-    return (-J*energy);
 }
 
-void ising_diff(double **state, double *energy){
+/*void ising_diff(int **state, int *energy){
 
-    double J; // Coupling constant
+    int J = 1; // Coupling constant
     int temp = 0.0;
 
     // KANT VENSTRE
@@ -138,4 +186,4 @@ void ising_diff(double **state, double *energy){
         temp += state[x][y+1];
 
     *energy = (2*J*state[x][y]*temp);
-}
+}*/
