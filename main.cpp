@@ -2,7 +2,11 @@
 #include <fstream>
 #include <iomanip>
 #include <cmath>
+#include <random>
 using namespace std;
+std::random_device rd;
+std::mt19937_64 gen(rd());
+std::uniform_real_distribution<double> RandomNumberGenerator(0.0,1.0);
 ofstream ofile;
 ofstream ofile2;
 
@@ -12,20 +16,20 @@ void delete_matrix_2(int n, int** state);
 void print_matrix_to_screen(int n, int** state);
 void initialize(int** state, double temperature, int& E, int& M, int n);
 int periodic(int position, int N, int jump);
-void Metropolis(int N, double random_number, int **spins, int& E, int& M, double *w);
+void Metropolis(int N, int **spins, int& E, int& M, double *w);
 double r2();
 void output(int N, int mc_cycles, double temperature, double* expectation_values);
 
 
 int main()
 {
-    int N = 20;
+    int N = 2;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 4;
+    double final_temp = 2;
     double initial_temp = 1;
-    int mc_cycles = pow(10,5);
+    int mc_cycles = pow(10,7);
     double temp_step = 0.50;
     int energy = 0;
     int magnetization = 0;
@@ -46,16 +50,14 @@ int main()
         for(int de = -8; de <= 8; de +=4){
             w[de+8] = exp(-de/temperature);}
 
+        //for(int i=0; i<17; i++){
+        //    cout << "w[" << i << "]: " << w[i] << endl;
+        //}
+
         initialize(spins, temperature, energy, magnetization, N);
 
-	// MONTE CARLO
-	// Må lage en random number generator.
-	// Gir ut #dim forskjellige tall (i første omgang 2). Disse skaleres så til en verdi mellom 1 og N (antall spin i hver dimensjon).
-	// Dette beskriver da en spesifikk partikkel som evt. skal endre spin.
-	// Monte Carlo kjøres i en for-løkke ca 10^6 ganger.  
-
         for(int cycles = 0; cycles < mc_cycles; cycles++){
-            Metropolis(N, r2(), spins, energy, magnetization, w);
+            Metropolis(N, spins, energy, magnetization, w);
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
@@ -68,8 +70,6 @@ int main()
             //ofile2 << endl;
 
         }
-
-        cout << "Temperature " << temperature << endl;
 
         print_matrix_to_screen(N, spins);
         output(N, mc_cycles, temperature, expectation_values);
@@ -126,7 +126,6 @@ void print_matrix_to_screen(int n, int **state){
 void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses periodic boundary conditions.
 
     int J = 1; // Coupling constant
-    int sum = 0;
 
     // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
     for(int y = 0; y < n; y++){
@@ -140,13 +139,7 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
 
     for(int y=0; y<n; y++){
         for(int x=0; x<n; x++){
-
-            sum = state[x][periodic(y, n, -1)] + state[x][periodic(y, n, +1)]
-                    + state[periodic(x, n, -1)][y] + state[periodic(x, n, +1)][y];
-
-            E += -J*state[x][y]*sum;
-            sum = 0;
-
+            E += -J*state[x][y]*(state[x][periodic(y, n, -1)] + state[x][periodic(y, n, +1)] + state[periodic(x, n, -1)][y] + state[periodic(x, n, +1)][y]);
             M += state[x][y];
         }
     }
@@ -167,20 +160,21 @@ periodic(int position, int N, int jump){ // Mulig å gjøre dette uten if? Det e
 }
 
 
-void Metropolis(int N, double random_number, int **spins, int& E, int& M, double *w){
+void Metropolis(int N, int **spins, int& E, int& M, double *w){
 
     for(int x = 0; x<N; x++){
         for(int y = 0; y<N; y++){
 
+            double random_number = RandomNumberGenerator(gen);
             int deltaE = 0;
-            int random_spin_x = rand()%N;
-            int random_spin_y = rand()%N;
+            int random_spin_x = int(RandomNumberGenerator(gen)*N);
+            int random_spin_y = int(RandomNumberGenerator(gen)*N);
 
             deltaE = 2*spins[random_spin_x][random_spin_y]*
                 (spins[random_spin_x][periodic(random_spin_y, N, 1)] + spins[random_spin_x][periodic(random_spin_y, N, -1)] +
                 spins[periodic(random_spin_x, N, 1)][random_spin_y] + spins[periodic(random_spin_x, N, -1)][random_spin_y]);
 
-            if(random_number >= w[deltaE+8]){
+            if(random_number <= w[deltaE+8]){
                 spins[random_spin_x][random_spin_y] *= -1;
                 E += deltaE;
                 M += 2*spins[random_spin_x][random_spin_y];
