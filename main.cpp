@@ -17,29 +17,37 @@ void print_matrix_to_screen(int n, int** state);
 void initialize(int** state, double temperature, int& E, int& M, int n);
 int periodic(int position, int N, int jump);
 void Metropolis(int N, int **spins, int& E, int& M, double *w);
+void update_probabilities(int energy, int *counter, int *count_total);
+void output_probabilities(int *counter, int *count_total, int possible_energies);
 double r2();
 void output(int N, int mc_cycles, double temperature, double* expectation_values);
 
 
 int main()
 {
-    int N = 2;
+    int N = 20;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 2;
-    double initial_temp = 1;
-    int mc_cycles = pow(10,7);
+    double final_temp = 4;
+    double initial_temp = 4;
+    int mc_cycles = pow(10,5);
     double temp_step = 0.50;
     int energy = 0;
     int magnetization = 0;
     double expectation_values[5]; // E, E*E, M, M*M, |M|
     double w[17];
 
-    srand(time(NULL));
+    // Variables needed for finding the probabilities of the energies at a given temperature. Can be commented out if that is not to be done.
+    int possible_energies = N*N*4*2 + 1;
+    int counter[possible_energies];
+    int *count_total;
+    *count_total = 0;
+    for(int i = 0; i<possible_energies; i++)
+        counter[i] = 0;
 
-    ofile.open("Resultater.txt");
-    //ofile2.open("MC-utvikling.txt");
+    ofile.open("4d 1 10^6.txt");
+
 
     for(double temperature = initial_temp; temperature <= final_temp; temperature += temp_step){
 
@@ -50,35 +58,27 @@ int main()
         for(int de = -8; de <= 8; de +=4){
             w[de+8] = exp(-de/temperature);}
 
-        //for(int i=0; i<17; i++){
-        //    cout << "w[" << i << "]: " << w[i] << endl;
-        //}
-
         initialize(spins, temperature, energy, magnetization, N);
 
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
+            // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
+            update_probabilities(energy, counter, count_total);
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
             expectation_values[3] += magnetization*magnetization;
             expectation_values[4] += fabs(magnetization);
-
-            //ofile2 << setiosflags(ios::showpoint | ios::uppercase);
-            //ofile2 << setw(15) << setprecision(8) << expectation_values[0]/((double)(mc_cycles));
-            //ofile2 << setw(15) << setprecision(8) << expectation_values[3]/((double)(mc_cycles));
-            //ofile2 << endl;
-
         }
 
+        //output_probabilities(counter, count_total, possible_energies);
         print_matrix_to_screen(N, spins);
-        output(N, mc_cycles, temperature, expectation_values);
+        //output(N, mc_cycles, temperature, expectation_values);
     }
 
     delete_matrix_2(N, spins);
     ofile.close();
-    //ofile2.close();
-	return 0;
+    return 0;
 }
 
 
@@ -116,9 +116,10 @@ void print_matrix_to_screen(int n, int **state){
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
 
-            cout << state[x][y] << "  ";
+            cout << setiosflags(ios::showpoint | ios::uppercase);
+            cout << setw(3) << setprecision(1) << state[x][y];
         }
-        cout << "\n";
+        cout << endl;
     }
 }
 
@@ -130,7 +131,7 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
     // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
-            if(temperature < 1.3)
+            if(temperature < 4.3)
                 state[x][y] = 1;
         }
     }
@@ -184,32 +185,46 @@ void Metropolis(int N, int **spins, int& E, int& M, double *w){
 }
 
 
-double r2()
-{
-    return (double)rand() / (double)RAND_MAX ;
+
+void update_probabilities(int energy, int *counter, int *count_total){
+
+    counter[energy + 1600] += 1;
+    *count_total += 1;
+}
+
+
+void output_probabilities(int *counter, int* count_total, int possible_energies){
+
+    for(int i=0; i<possible_energies; i++){
+        ofile << setiosflags(ios::showpoint | ios::uppercase);
+        ofile << setw(15) << setprecision(8) << (i-1600);
+        ofile << setw(15) << setprecision(8) << counter[i];
+        ofile << setw(15) << setprecision(8) << (double)counter[i] / (double)(*count_total);
+        ofile << endl;
+    }
 }
 
 
 void output(int N, int mc_cycles, double temperature, double* expectation_values)
 {
-double norm = 1.0/((double) (mc_cycles)); // divided by number of cycles
-double E_ExpectationValues = expectation_values[0]*norm;
-double E2_ExpectationValues = expectation_values[1]*norm;
-double M_ExpectationValues = expectation_values[2]*norm;
-double M2_ExpectationValues = expectation_values[3]*norm;
-double Mabs_ExpectationValues = expectation_values[4]*norm;
+    double norm = 1.0/((double) (mc_cycles)); // divided by number of cycles
+    double E_ExpectationValues = expectation_values[0]*norm;
+    double E2_ExpectationValues = expectation_values[1]*norm;
+    double M_ExpectationValues = expectation_values[2]*norm;
+    double M2_ExpectationValues = expectation_values[3]*norm;
+    double Mabs_ExpectationValues = expectation_values[4]*norm;
 
-// all expectation values are per spin, divide by 1/NSpins/NSpins
+    // all expectation values are per spin, divide by 1/NSpins/NSpins
 
-double Evariance = (E2_ExpectationValues- E_ExpectationValues*E_ExpectationValues)/(N*N);
-double Mvariance = (M2_ExpectationValues - Mabs_ExpectationValues*Mabs_ExpectationValues)/(N*N);
+    double Evariance = (E2_ExpectationValues- E_ExpectationValues*E_ExpectationValues)/(N*N);
+    double Mvariance = (M2_ExpectationValues - Mabs_ExpectationValues*Mabs_ExpectationValues)/(N*N);
 
-ofile << setiosflags(ios::showpoint | ios::uppercase);
-ofile << setw(15) << setprecision(8) << temperature;
-ofile << setw(15) << setprecision(8) << E_ExpectationValues/(N*N);
-ofile << setw(15) << setprecision(8) << Evariance/(temperature*temperature);
-ofile << setw(15) << setprecision(8) << M_ExpectationValues/(N*N);
-ofile << setw(15) << setprecision(8) << Mvariance/temperature;
-ofile << setw(15) << setprecision(8) << Mabs_ExpectationValues/(N*N);
-ofile << endl;
+    ofile << setiosflags(ios::showpoint | ios::uppercase);
+    ofile << setw(15) << setprecision(8) << temperature;
+    ofile << setw(15) << setprecision(8) << E_ExpectationValues/(N*N);
+    ofile << setw(15) << setprecision(8) << Evariance/(temperature*temperature);
+    ofile << setw(15) << setprecision(8) << M_ExpectationValues/(N*N);
+    ofile << setw(15) << setprecision(8) << Mvariance/temperature;
+    ofile << setw(15) << setprecision(8) << Mabs_ExpectationValues/(N*N);
+    ofile << endl;
 }
