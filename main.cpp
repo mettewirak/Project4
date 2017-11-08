@@ -1,4 +1,5 @@
 #include <iostream>
+#include "lib.h"
 using namespace std;
 
 int main()
@@ -37,7 +38,13 @@ int main()
 
 	// RESULTATER
 	// Gi ut gjennomsnittsenergi, gjennomsnittsmagnetisering, varmekapasitet og suseptebilitet.
-
-
+    int p= ran0(0)
+cout<< p
 	return 0;
 }
+
+//double MonteCarlo(double *x){
+
+
+
+//}
