@@ -17,9 +17,8 @@ void print_matrix_to_screen(int n, int** state);
 void initialize(int** state, double temperature, int& E, int& M, int n);
 int periodic(int position, int N, int jump);
 void Metropolis(int N, int **spins, int& E, int& M, double *w);
-void update_probabilities(int energy, int *counter, int *count_total);
+void update_probabilities(int energy, int *counter, int &count_total);
 void output_probabilities(int *counter, int *count_total, int possible_energies);
-double r2();
 void output(int N, int mc_cycles, double temperature, double* expectation_values);
 
 
@@ -30,14 +29,17 @@ int main(int argc, char* argv[])
     MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 
-    int N = 20;
+    cout << "numprocs: " << numprocs << endl;
+    cout << "my_rank: " << my_rank << endl;
+
+    int N = 40;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 5;
-    double initial_temp = 1;
-    int mc_cycles = pow(10,5);
-    double temp_step = 0.50;
+    double final_temp = 2.3;
+    double initial_temp = 2.0;
+    int mc_cycles = pow(10,6);
+    double temp_step = 0.05;
     int energy = 0;
     int magnetization = 0;
     double expectation_values[5]; // E, E*E, M, M*M, |M|
@@ -45,15 +47,13 @@ int main(int argc, char* argv[])
     double w[17];
 
 
-    srand(time(NULL)+6886456*my_rank);
     if(my_rank==0){
-        ofile.open("Resultater.txt");}
+        ofile.open("4e 40 2.0 2.3 10⁶.txt");}
 
     // Variables needed for finding the probabilities of the energies at a given temperature. Can be commented out if that is not to be done.
     int possible_energies = N*N*4*2 + 1;
     int counter[possible_energies];
-    int *count_total;
-    *count_total = 0;
+    int count_total = 0;
     for(int i = 0; i<possible_energies; i++)
         counter[i] = 0;
 
@@ -67,19 +67,14 @@ int main(int argc, char* argv[])
         for(int de = -8; de <= 8; de +=4){
             w[de+8] = exp(-de/temperature);}
 
-        /*for(int i=0; i<17; i++){
-            cout << "w[" << i << "]: " << w[i] << endl;
-        }*/
-
 
         initialize(spins, temperature, energy, magnetization, N);
-        //print_matrix_to_screen(N, spins);
 
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
             // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
             //update_probabilities(energy, counter, count_total);
-            
+
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
@@ -87,14 +82,9 @@ int main(int argc, char* argv[])
             expectation_values[4] += fabs(magnetization);
         }
 
-        MPI_Allreduce( expectation_values, expectation_values_global, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        for (int i=0;i<5;i++){expectation_values_global[i]/=2;}
+        MPI_Allreduce(expectation_values, expectation_values_global, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        for (int i=0;i<5;i++){expectation_values_global[i] /= numprocs;}
         if(my_rank==0){output(N, mc_cycles, temperature, expectation_values_global);}
-
-
-        //output_probabilities(counter, count_total, possible_energies);
-        output(N, mc_cycles, temperature, expectation_values);
-
     }
 
     delete_matrix_2(N, spins);
@@ -102,6 +92,7 @@ int main(int argc, char* argv[])
 
     MPI_Finalize ();
 
+    cout << "Ferdig kjørt.\n";
     return 0;
 }
 
@@ -158,14 +149,14 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
 
             // if(temperature < 1.3)
             state[x][y] = 1; //Alle spinn peker opp
-            // int i = RandomNumberGenerator(gen); // random 
+            // int i = RandomNumberGenerator(gen); // random
             // if(i==1){state[x][y]=1;}
             // else{state[x][y]=-1;}
 
         }
     }
 
-    E =0;
+    E = 0;
     M = 0;
 
     for(int y=0; y<n; y++){
@@ -174,8 +165,6 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
             M += state[x][y];
         }
     }
-
-    cout << "Initial energy: " << E/(n*n) << endl;
 }
 
 
