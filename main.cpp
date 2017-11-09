@@ -10,8 +10,6 @@ std::random_device rd;
 std::mt19937_64 gen(rd());
 std::uniform_real_distribution<double> RandomNumberGenerator(0.0,1.0);
 ofstream ofile;
-ofstream ofile2;
-
 
 int** create_matrix_2(int n);
 void delete_matrix_2(int n, int** state);
@@ -19,6 +17,8 @@ void print_matrix_to_screen(int n, int** state);
 void initialize(int** state, double temperature, int& E, int& M, int n);
 int periodic(int position, int N, int jump);
 void Metropolis(int N, int **spins, int& E, int& M, double *w);
+void update_probabilities(int energy, int *counter, int *count_total);
+void output_probabilities(int *counter, int *count_total, int possible_energies);
 double r2();
 void output(int N, int mc_cycles, double temperature, double* expectation_values);
 
@@ -44,14 +44,19 @@ int main(int argc, char* argv[])
     double expectation_values_global[5];
     double w[17];
 
+
     srand(time(NULL)+6886456*my_rank);
     if(my_rank==0){
         ofile.open("Resultater.txt");}
-    //ofile.open("Resultater_T_1.txt");
-    //ofile.open("Resultater_T_2_4.txt");
-    //ofile.open("Resultater_T_1_opp.txt");
-    //ofile.open("Resultater_T_2_4_opp.txt");
-    //ofile2.open("MC-utvikling.txt");
+
+    // Variables needed for finding the probabilities of the energies at a given temperature. Can be commented out if that is not to be done.
+    int possible_energies = N*N*4*2 + 1;
+    int counter[possible_energies];
+    int *count_total;
+    *count_total = 0;
+    for(int i = 0; i<possible_energies; i++)
+        counter[i] = 0;
+
 
     for(double temperature = initial_temp; temperature <= final_temp; temperature += temp_step){
 
@@ -66,38 +71,38 @@ int main(int argc, char* argv[])
             cout << "w[" << i << "]: " << w[i] << endl;
         }*/
 
+
         initialize(spins, temperature, energy, magnetization, N);
         //print_matrix_to_screen(N, spins);
 
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
+            // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
+            //update_probabilities(energy, counter, count_total);
+            
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
             expectation_values[3] += magnetization*magnetization;
             expectation_values[4] += fabs(magnetization);
-            //output(N, cycles, temperature, expectation_values);
-
-            //ofile2 << setiosflags(ios::showpoint | ios::uppercase);
-            //ofile2 << setw(15) << setprecision(8) << expectation_values[0]/((double)(mc_cycles));
-            //ofile2 << setw(15) << setprecision(8) << expectation_values[3]/((double)(mc_cycles));
-            //ofile2 << endl;
-            //print_matrix_to_screen(N, spins);
         }
+
         MPI_Allreduce( expectation_values, expectation_values_global, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         for (int i=0;i<5;i++){expectation_values_global[i]/=2;}
-        //print_matrix_to_screen(N, spins);
-
         if(my_rank==0){output(N, mc_cycles, temperature, expectation_values_global);}
+
+
+        //output_probabilities(counter, count_total, possible_energies);
+        output(N, mc_cycles, temperature, expectation_values);
+
     }
 
     delete_matrix_2(N, spins);
     ofile.close();
-    //ofile2.close();
+
     MPI_Finalize ();
 
     return 0;
-
 }
 
 
@@ -135,9 +140,10 @@ void print_matrix_to_screen(int n, int **state){
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
 
-            cout << state[x][y] << "  ";
+            cout << setiosflags(ios::showpoint | ios::uppercase);
+            cout << setw(3) << setprecision(1) << state[x][y];
         }
-        cout << "\n";
+        cout << endl;
     }
 }
 
@@ -149,11 +155,12 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
     // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
-            //if(temperature < 1.3)
+
+            // if(temperature < 1.3)
             state[x][y] = 1; //Alle spinn peker opp
-            //int i =rand()%2; //Random
-            //if(i==1){state[x][y]=1;}
-            //else{state[x][y]=-1;}
+            // int i = RandomNumberGenerator(gen); // random 
+            // if(i==1){state[x][y]=1;}
+            // else{state[x][y]=-1;}
 
         }
     }
@@ -167,6 +174,8 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
             M += state[x][y];
         }
     }
+
+    cout << "Initial energy: " << E/(n*n) << endl;
 }
 
 
@@ -211,9 +220,23 @@ void Metropolis(int N, int **spins, int& E, int& M, double *w){
 }
 
 
-double r2()
-{
-    return (double)rand() / (double)RAND_MAX ;
+
+void update_probabilities(int energy, int *counter, int *count_total){
+
+    counter[energy + 1600] += 1;
+    *count_total += 1;
+}
+
+
+void output_probabilities(int *counter, int* count_total, int possible_energies){
+
+    for(int i=0; i<possible_energies; i++){
+        ofile << setiosflags(ios::showpoint | ios::uppercase);
+        ofile << setw(15) << setprecision(8) << (i-1600);
+        ofile << setw(15) << setprecision(8) << counter[i];
+        ofile << setw(15) << setprecision(8) << (double)counter[i] / (double)(*count_total);
+        ofile << endl;
+    }
 }
 
 
@@ -240,5 +263,3 @@ void output(int N, int mc_cycles, double temperature, double* expectation_values
     ofile << setw(15) << setprecision(8) << Mabs_ExpectationValues/(N*N);
     ofile << endl;
 }
-
-
