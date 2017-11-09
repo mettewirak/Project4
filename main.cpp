@@ -25,13 +25,13 @@ void output(int N, int mc_cycles, double temperature, double* expectation_values
 
 int main()
 {
-    int N = 20;
+    int N = 2;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 4;
-    double initial_temp = 4;
-    int mc_cycles = pow(10,5);
+    double final_temp = 1;
+    double initial_temp = 1;
+    int mc_cycles = pow(10,7);
     double temp_step = 0.50;
     int energy = 0;
     int magnetization = 0;
@@ -46,7 +46,7 @@ int main()
     for(int i = 0; i<possible_energies; i++)
         counter[i] = 0;
 
-    ofile.open("4d 1 10^6.txt");
+    ofile.open("4b, 10^7.txt");
 
 
     for(double temperature = initial_temp; temperature <= final_temp; temperature += temp_step){
@@ -63,7 +63,7 @@ int main()
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
             // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
-            update_probabilities(energy, counter, count_total);
+            //update_probabilities(energy, counter, count_total);
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
@@ -73,7 +73,7 @@ int main()
 
         //output_probabilities(counter, count_total, possible_energies);
         print_matrix_to_screen(N, spins);
-        //output(N, mc_cycles, temperature, expectation_values);
+        output(N, mc_cycles, temperature, expectation_values);
     }
 
     delete_matrix_2(N, spins);
@@ -131,7 +131,7 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
     // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
-            if(temperature < 4.3)
+            // if(temperature < 4.3)
                 state[x][y] = 1;
         }
     }
@@ -140,10 +140,12 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
 
     for(int y=0; y<n; y++){
         for(int x=0; x<n; x++){
-            E += -J*state[x][y]*(state[x][periodic(y, n, -1)] + state[x][periodic(y, n, +1)] + state[periodic(x, n, -1)][y] + state[periodic(x, n, +1)][y]);
+            E += -J*state[x][y]*(state[x][periodic(y, n, -1)] + state[periodic(x, n, -1)][y]);
             M += state[x][y];
         }
     }
+
+    cout << "Initial energy: " << E/(n*n) << endl;
 }
 
 
