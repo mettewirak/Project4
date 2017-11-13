@@ -25,19 +25,21 @@ void output(int N, int mc_cycles, double temperature, double* expectation_values
 
 int main(int argc, char* argv[])
 {
+    cout<<"her" << endl;
     int numprocs, my_rank;
     MPI_Init(&argc,&argv);
     MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 
-    int N = 20;
+
+    int N = 40;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 5;
-    double initial_temp = 1;
-    int mc_cycles = pow(10,5);
-    double temp_step = 0.50;
+    double final_temp = 2.3;
+    double initial_temp = 2.0;
+    int mc_cycles = pow(10,4);
+    double temp_step = 0.050;
     int energy = 0;
     int magnetization = 0;
     double expectation_values[5]; // E, E*E, M, M*M, |M|
@@ -52,11 +54,12 @@ int main(int argc, char* argv[])
     // Variables needed for finding the probabilities of the energies at a given temperature. Can be commented out if that is not to be done.
     int possible_energies = N*N*4*2 + 1;
     int counter[possible_energies];
-    int *count_total;
-    *count_total = 0;
-    for(int i = 0; i<possible_energies; i++)
-        counter[i] = 0;
+    int count_total=0;
 
+    //cout << "hei# " << endl; fflush(stdout);
+    for(int i = 0; i<possible_energies; i++)
+
+        counter[i] = 0;
 
     for(double temperature = initial_temp; temperature <= final_temp; temperature += temp_step){
 
@@ -78,7 +81,7 @@ int main(int argc, char* argv[])
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
             // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
-            //update_probabilities(energy, counter, count_total);
+            //update_probabilities(energy, counter, &count_total);
             
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
@@ -93,12 +96,14 @@ int main(int argc, char* argv[])
 
 
         //output_probabilities(counter, count_total, possible_energies);
-        output(N, mc_cycles, temperature, expectation_values);
+
+        //output(N, mc_cycles, temperature, expectation_values);
 
     }
 
     delete_matrix_2(N, spins);
     ofile.close();
+
 
     MPI_Finalize ();
 
