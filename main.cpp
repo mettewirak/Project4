@@ -17,37 +17,38 @@ void print_matrix_to_screen(int n, int** state);
 void initialize(int** state, double temperature, int& E, int& M, int n);
 int periodic(int position, int N, int jump);
 void Metropolis(int N, int **spins, int& E, int& M, double *w);
-void update_probabilities(int energy, int *counter, int *count_total);
-void output_probabilities(int *counter, int *count_total, int possible_energies);
-double r2();
+void update_probabilities(int energy, int* counter, int& count_total);
+void output_probabilities(int *counter, int& count_total, int possible_energies, int N);
 void output(int N, int mc_cycles, double temperature, double* expectation_values);
 
 
 int main()
 {
-    int N = 2;
+    int N = 20;
     int** spins;
     spins = create_matrix_2(N);
 
-    double final_temp = 1;
-    double initial_temp = 1;
-    int mc_cycles = pow(10,7);
+    double initial_temp = 2.4;
+    double final_temp = 2.4;
     double temp_step = 0.50;
+
+    int mc_cycles = pow(10,6);
+
     int energy = 0;
     int magnetization = 0;
     double expectation_values[5]; // E, E*E, M, M*M, |M|
     double w[17];
 
     // Variables needed for finding the probabilities of the energies at a given temperature. Can be commented out if that is not to be done.
-    int possible_energies = N*N*4*2 + 1;
-    int counter[possible_energies];
-    int *count_total;
-    *count_total = 0;
+    int possible_energies = N*N*2*2 + 1;
+    int* counter;
+    int count_total=0;
+    counter = new int[possible_energies];
     for(int i = 0; i<possible_energies; i++)
         counter[i] = 0;
 
-    ofile.open("4b, 10^7.txt");
-
+    ofile.open("20 2.4 10^6.txt");
+    ofile2.open("Probabilities 2.4 10^6.txt");
 
     for(double temperature = initial_temp; temperature <= final_temp; temperature += temp_step){
 
@@ -63,7 +64,11 @@ int main()
         for(int cycles = 0; cycles < mc_cycles; cycles++){
             Metropolis(N, spins, energy, magnetization, w);
             // IF STEADY STATE. Må legge inn en løkke her slik at update_probabilities kun kjøres når vi har nådd steady state.
-            //update_probabilities(energy, counter, count_total);
+
+            if(cycles>(0.1*mc_cycles)){
+                update_probabilities(energy, counter, count_total);
+            }
+
             expectation_values[0] += energy;
             expectation_values[1] += energy*energy;
             expectation_values[2] += magnetization;
@@ -71,13 +76,15 @@ int main()
             expectation_values[4] += fabs(magnetization);
         }
 
-        //output_probabilities(counter, count_total, possible_energies);
-        print_matrix_to_screen(N, spins);
+        output_probabilities(counter, count_total, possible_energies, N);
         output(N, mc_cycles, temperature, expectation_values);
     }
 
     delete_matrix_2(N, spins);
     ofile.close();
+    ofile2.close();
+
+    cout << "Ferdig kjørt.\n";
     return 0;
 }
 
@@ -131,12 +138,13 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
     // Initialiserer til at alle spin peker opp hvis temperaturen er lav. Skal ellers fortsette som det var i temperaturen før.
     for(int y = 0; y < n; y++){
         for(int x = 0; x < n; x++){
-            // if(temperature < 4.3)
+            //if(temperature < 1.3)
                 state[x][y] = 1;
         }
     }
 
-    E = M = 0;
+    E = 0;
+    M = 0;
 
     for(int y=0; y<n; y++){
         for(int x=0; x<n; x++){
@@ -144,12 +152,10 @@ void initialize(int **state, double temperature, int& E, int& M, int n){ // Uses
             M += state[x][y];
         }
     }
-
-    cout << "Initial energy: " << E/(n*n) << endl;
 }
 
 
-periodic(int position, int N, int jump){ // Mulig å gjøre dette uten if? Det er tydeligvis dårlig
+periodic(int position, int N, int jump){
 
     if((position+jump) < 0){
         return (N-1);
@@ -174,8 +180,8 @@ void Metropolis(int N, int **spins, int& E, int& M, double *w){
             int random_spin_y = int(RandomNumberGenerator(gen)*N);
 
             deltaE = 2*spins[random_spin_x][random_spin_y]*
-                (spins[random_spin_x][periodic(random_spin_y, N, 1)] + spins[random_spin_x][periodic(random_spin_y, N, -1)] +
-                spins[periodic(random_spin_x, N, 1)][random_spin_y] + spins[periodic(random_spin_x, N, -1)][random_spin_y]);
+                    (spins[random_spin_x][periodic(random_spin_y, N, -1)] + spins[random_spin_x][periodic(random_spin_y, N, 1)] +
+                    spins[periodic(random_spin_x, N, 1)][random_spin_y] + spins[periodic(random_spin_x, N, -1)][random_spin_y]);
 
             if(random_number <= w[deltaE+8]){
                 spins[random_spin_x][random_spin_y] *= -1;
@@ -188,21 +194,21 @@ void Metropolis(int N, int **spins, int& E, int& M, double *w){
 
 
 
-void update_probabilities(int energy, int *counter, int *count_total){
+void update_probabilities(int energy, int *counter, int &count_total){
 
-    counter[energy + 1600] += 1;
-    *count_total += 1;
+    counter[energy + 800] += 1;
+    count_total += 1;
 }
 
 
-void output_probabilities(int *counter, int* count_total, int possible_energies){
+void output_probabilities(int *counter, int &count_total, int possible_energies, int N){
 
     for(int i=0; i<possible_energies; i++){
-        ofile << setiosflags(ios::showpoint | ios::uppercase);
-        ofile << setw(15) << setprecision(8) << (i-1600);
-        ofile << setw(15) << setprecision(8) << counter[i];
-        ofile << setw(15) << setprecision(8) << (double)counter[i] / (double)(*count_total);
-        ofile << endl;
+        ofile2 << setiosflags(ios::showpoint | ios::uppercase);
+        ofile2 << setw(15) << setprecision(8) << ((double)(i-800)/(double)(N*N));
+        ofile2 << setw(15) << setprecision(8) << counter[i];
+        ofile2 << setw(15) << setprecision(8) << (double)counter[i] / (double)(count_total);
+        ofile2 << endl;
     }
 }
 
