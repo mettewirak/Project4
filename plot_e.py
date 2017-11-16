@@ -13,9 +13,9 @@ def read(filename):
 		Mvariance = [line.split()[4] for line in lines]
 		Mabs_ExpectationValues = [line.split()[5] for line in lines]
 	return temperature,E_ExpectationValues,Evariance,M_ExpectationValues, Mvariance,Mabs_ExpectationValues
-path="/home/arnlaug/Documents/UiO/Compfys/Project/build-arnlaug-Desktop-Debug/" #Endre til din
+path="C:/Users/Mette Wirak/Documents/Faglig/Universitetet i Oslo/Computational Physics/Project4/" #Endre til din
 
-filenames=["4e 40 2.0 2.3 10_6.txt","4e 40 2.2 2.3 10_7.txt", "4e 60 2.0 2.3 10_7.txt", "4e 80 2.0 2.3 10_7.txt" ]
+filenames=["4e 40 2.0 2.3 10_7.txt","4e 60 2.0 2.3 10_7.txt", "4e 80 2.0 2.3 10_7.txt", "4e 100 2.0 2.3 10_7.txt" ]
 
 fil_label=["$L=40, n=10^6$", "$L=40, n=10^7$", "$L=60, n=10^7$", "$L=80, n=10^7$"]
 
