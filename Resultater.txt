@@ -1,8 +1,9 @@
 Her er noen resultater
 
 Analytisk:
-Variancen til E for 2x2 0.128304213535
-Variancen til M for 2x2 7.98393014069
+Variancen til E for 2x2 0.0.12829704019, (0.0320742600476 per partikkel)
+Variancen til M for 2x2 4.00534047975 (1.00133511994 per partikkel)
+Absuluttverdien av M 2x2 = 12 (3 per partikkel)
 
 Nummerisk:
 Variansen til E for 2x2 per partikkel: 0.032001677 
