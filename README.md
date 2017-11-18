@@ -11,7 +11,8 @@ All of our simulations are run in two dimensions, and we've used between 2 and 1
 ### How to run the code
 
 If running with MPI on the school computers, this should be included in the .pro-file in QT:
-'''
+
+```
 TEMPLATE = app  
 CONFIG += console c++11  
 CONFIG -= app_bundle  
@@ -30,7 +31,7 @@ QMAKE_LFLAGS += $$system(/usr/lib64/openmpi/bin/mpicxx --showme:link)
 QMAKE_CXXFLAGS += $$system(/usr/lib64/openmpi/bin/mpicxx --showme:compile) -DMPICH_IGNORE_CXX_SEEK  
 QMAKE_CXXFLAGS_RELEASE += $$system(/usr/lib64/openmpi/bin/mpicxx --showme:compile) -DMPICH_IGNORE_CXX_SEEK -O3  
 QMAKE_CXXFLAGS_DEBUG += $$system(/usr/lib64/openmpi/bin/mpicxx --showme:compile) -DMPICH_IGNORE_CXX_SEEK -O3  
-'''
+```
 
 One also has to change the run settings to the following: 
 Executable:               /usr/lib64/openmpi/bin/mpirun  
