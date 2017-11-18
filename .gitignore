@@ -31,3 +31,5 @@ temp*
 
 *.pro.user
 *.pro
+
+*.py
