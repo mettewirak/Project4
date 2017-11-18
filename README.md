@@ -34,8 +34,9 @@ QMAKE_CXXFLAGS_DEBUG += $$system(/usr/lib64/openmpi/bin/mpicxx --showme:compile)
 ```
 
 One also has to change the run settings to the following: 
+```
 Executable:               /usr/lib64/openmpi/bin/mpirun  
 Command line arguments:   -np 8 Project4  
-
+```
 
 Running the code on other computers with MPI, simply change the paths in both the .pro-file and the executable.
